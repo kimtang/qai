@@ -1,106 +1,158 @@
 
-.import.require`reQ
+.import.require`remote;
 
-.req.def:(!/) flip 2 cut (                                                               //default headers
-  "User-Agent";     "kdb+/",string .Q.k;
-  "Accept";         "*/*"
-  )
+.bt.add[`.import.init;`.kdbai.init]{.kdbai.init[]}
 
-d)lib kdbai.kdbai 
+.kdbai.conf:()!()
+.kdbai.base_conf:`model`stream`embed!("llama3.1";0b;"all-minilm")
+.kdbai.init:{
+ .kdbai.conf:.util.deepMerge[.kdbai.base_conf].import.config`kdbai;
+ .remote.add update uid:`kdbai.default from .kdbai.conf`connection;
+ .kdbai.proc:`kdbai.default;
+ }
+
+d)lib qai.kdbai 
  Library for working with the os
  q).import.module`kdbai 
- q).import.module`kdbai.kdbai
- q).import.module"%kdbai%/qlib/kdbai/kdbai.q"
-
-.kdbai.path.READY_PATH:"/api/v1/ready"
-.kdbai.path.VERSION_PATH:"/api/v1/version"
-.kdbai.path.CONFIG_PATH:"/api/v1/config/table"
-.kdbai.path.CREATE_PATH:"/api/v1/config/table/"
-.kdbai.path.DROP_PATH:"/api/v1/config/table/"
-.kdbai.path.QUERY_PATH:"/api/v1/data"
-.kdbai.path.INSERT_PATH:"/api/v1/insert"
-.kdbai.path.TRAIN_PATH:"/api/v1/train"
-.kdbai.path.SEARCH_PATH:"/api/v1/kxi/search"
-.kdbai.path.HYBRID_SEARCH_PATH:"/api/v1/kxi/hybridSearch"
-
-.kdbai.summary:{} 
-
-d)fnc kdbai.kdbai.summary 
- Give a summary of this function
- q) kdbai.summary[] 
+ q).import.module`qai.kdbai
+ q).import.module"%qai%/qlib/kdbai/kdbai.q"
 
 
-.kdbai.ready:{[endpoint]
- if[not 99h=type endpoint;endpoint:.bt.md[`endpoint]endpoint];
- @[{ `$.req.get . x };(.bt.print["%endpoint%%READY_PATH%"] .kdbai.path,endpoint;(`$("Content-type";"Accept"))!(.req.ty`json;.req.ty`json));{`BAD}]
+.kdbai.summary:{}
+
+d)fnc qai.kdbai.summary 
+ Give a summary of available models
+ q) .kdbai.summary[]
+
+.kdbai.col0:{[y] `c`t`a!(y 1;y 2;`) }
+.kdbai.col1:{[y] `c`t`a!(y 1;("SE"!" E") "E"^(`sparse`!"SE") y 2 ;`) }
+.kdbai.col2:{[x] flip{[x]  ((``embedding!(.kdbai.col0;.kdbai.col1)) (``embedding!``embedding) x 0)x } @' x    }
+.kdbai.embedding0:{[x] 1_{[x;y] 
+	if[`col=y 0;:x];
+	if[`sparse=y 2;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;`b)),y 3 ];
+	x, enlist (`name`type!(`$"defaultIndexName",string -1+count x;y 2)),y 3
+	} over enlist[{}],x } 
+.kdbai.emdCol0:{ {[x;y] if[`col=y 0;:x];x,y 1    } over enlist[()],x }
+
+
+.kdbai.cvdb0:{[vdb0;options;arg0]
+ a:(`vdb`partn`vdbType!(vdb0;0b;`metaManaged)) ,options;
+ a[`schema]:.kdbai.col2 arg0;
+ a[`emdCol]:.kdbai.emdCol0 arg0;
+ a[`idxParams]:.kdbai.embedding0 arg0;
+ :a
  }
 
 
-.kdbai.version:{[endpoint]
- if[not 99h=type endpoint;endpoint:.bt.md[`endpoint]endpoint];	
- .req.get[;(`$("Content-type";"Accept"))!(.req.ty`json;.req.ty`json)] .bt.print["%endpoint%%VERSION_PATH%"] .kdbai.path,endpoint
+
+.kdbai.cvdb:{[vdb0;arg0] .kdbai.cvdb0[vdb0;()!();arg0]}
+.kdbai.col:{[name;type0;arg0] enlist[(`col;name;type0)],arg0 }
+.kdbai.embedding:{[name;type0;arg1;arg0] enlist[(`embedding;name;type0;arg1)],arg0 }
+.kdbai.c0:()
+
+d)fnc qai.kdbai.cvdb 
+ Give a cvdb of available models
+ q)c0:.kdbai.cvdb[`d0]
+ q) .kdbai.col[`id;"s"]
+ q) .kdbai.col[`tag;"s"]
+ q) .kdbai.col[`text;"C"]
+ q) .kdbai.embedding[`embeddings;`flat;`dims`metric!(1536;`L2)]
+ q) .kdbai.c0
+ q)c1:.kdbai.cvdb[`c1]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`embeddings;`qflat;`dims`metric!(1536;`L2)]
+ q) .kdbai.c0
+ q)c2:.kdbai.cvdb[`c2]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`embeddings;`ivf;`trainingVectors`metric`nclusters!(1000j;`CS;10j)]
+ q) .kdbai.c0
+ q)c3:.kdbai.cvdb[`c3]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`embeddings;`ivfpq;`trainingVectors`metric`nclusters`nsplits`nbits!(5000j;`L2;50j;8j;8j)]
+ q) .kdbai.c0
+ q)c4:.kdbai.cvdb[`c4]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`embeddings;`hnsw;`dims`metric`efConstruction`M!(1536j;`IP;8j;8j)]
+ q) .kdbai.c0
+ q)c5:.kdbai.cvdb[`c5]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`embeddings;`sparse;`k`b!1.25 0.75f]
+ q) .kdbai.c0
+ q)c6:.kdbai.cvdb[`c6]
+ q) .kdbai.col[`id;"C"]
+ q) .kdbai.col[`tag;"C"]
+ q) .kdbai.col[`text;"X"]
+ q) .kdbai.embedding[`denseCol;`flat;`dims`metric!(1536;`L2)] 
+ q) .kdbai.embedding[`sparseCol;`sparse;`k`b!1.25 0.75f]
+ q) .kdbai.c0
+
+
+.kdbai.getVdbMeta0:{[proc] .remote.qthrow[proc] "getVdbMeta[]"}
+.kdbai.getVdbMeta:{ .kdbai.getVdbMeta0[.kdbai.proc] }
+
+d)fnc qai.kdbai.getVdbMeta 
+ Give a summary of available models
+ q) .kdbai.getVdbMeta[]
+
+
+.kdbai.getSupportedFilters0:{[proc] .remote.qthrow[proc] "getSupportedFilters[]"}
+.kdbai.getSupportedFilters:{ .kdbai.getSupportedFilters0[.kdbai.proc] }
+
+d)fnc qai.kdbai.getSupportedFilters 
+ Give a summary of available models
+ q) .kdbai.getSupportedFilters[]
+
+
+.kdbai.getVersion0:{[proc] .remote.qthrow[proc] "getVersion[]"}
+.kdbai.getVersion:{ .kdbai.getVersion0[.kdbai.proc] }
+
+
+d)fnc qai.kdbai.getVersion 
+ Give a summary of available models
+ q) .kdbai.getVersion[]
+
+
+.kdbai.vdbCreate0:{[proc;arg] .remote.qthrow[proc] enlist[`vdbCreate;arg]}
+.kdbai.vdbCreate:{[arg] .kdbai.vdbCreate0[.kdbai.proc] arg}
+
+d)fnc qai.kdbai.vdbCreate 
+ Give a summary of available models
+ q) .kdbai.vdbCreate 
+ q)		.kdbai.cvdb[`d0]
+ q) 		.kdbai.col[`id;"s"]
+ q) 		.kdbai.col[`tag;"s"]
+ q) 		.kdbai.col[`text;"C"]
+ q) 		.kdbai.embedding[`embeddings;`flat;`dims`metric!(1536;`L2)]
+ q) 		.kdbai.c0
+
+
+
+.kdbai.vdbInsert0:{[proc;arg] .remote.qthrow[proc] (`vdbInsert;arg) }
+.kdbai.vdbInsert:{[vdb;payload] .kdbai.vdbInsert0[.kdbai.proc] `vdb`payload!(vdb;payload) }
+
+d)fnc qai.kdbai.vdbInsert 
+ Give a summary of available models
+ q) .kdbai.vdbInsert 
+
+
+.kdbai.getData0:{[proc;arg] .remote.qthrow[proc] (`getData;arg)}
+.kdbai.getData:{[vdb;opt]
+ if[max(`;::)~\:opt;opt:()!()];
+ .kdbai.getData0[.kdbai.proc] ((1#`vdb)!enlist vdb),opt
  }
 
-.kdbai.get_tables:{[endpoint]
- if[not 99h=type endpoint;endpoint:.bt.md[`endpoint]endpoint];
- nschema:.req.get[;(`$("Content-type";"Accept"))!(.req.ty`json;.req.ty`json)] .bt.print["%endpoint%%CONFIG_PATH%"] .kdbai.path,endpoint;
- if[0=count nschema;:nschema];
- vschema:ungroup `name xcols update name:key nschema from ![;();1b;enlist[`type]!enlist (`$;`type)] value nschema;
- r:{{[x]update v:`long$'v from x where -9h=type@'v} {update v:`$v from x where 10h=type@'v} .util.ctable x}@'vschema;
- default:0!select by sym from raze {select sym,v:{first 1#0#x}@'v from x }@ 'r;
- default{exec sym!v from 0!select by {` sv x}@'sym from x,y}/:r
- }
-
-.kdbai.ctable:{[r]
- r:.util.ctable @'r;
- default:0!select by sym from raze {select sym,v:{first 1#0#x}@'v from x }@ 'r;
- default{exec sym!v from 0!select by {` sv x}@'sym from x,y}/:r	
- }
-
-.kdbai.cdict:{[x]
- {k:{` vs x}@'key x;.util.cdict select from ([]sym:k;v:value x) where (`type={` sv x}@'sym)or not null v}@'x
- }
-
-.kdbai.create0:{[endpoint;name;schema]
- r:.req.post[;(`$("Content-type";"Accept"))!(.req.ty`json;.req.ty`json);.j.j schema] .bt.print["%endpoint%%CREATE_PATH%%name%"] .kdbai.path,`name`endpoint! (name;endpoint)
- }
-
-.kdbai.create:{[endpoint;name;type0;schema]
- if[98h=type schema;schema:.kdbai.cdict schema];
- if[99h=type endpoint;endpoint:endpoint`endpoint];
- .kdbai.create0[endpoint;name;] `type`columns!(type0;schema)
- }
+d)fnc qai.kdbai.getData 
+ Give a summary of available models
+ q) .kdbai.getData 
 
 
-.kdbai.query:{[endpoint;name;param]
- param:param,(1#`table)!enlist name;
- result0:.req.post[;(`$("Content-type";"Accept"))!(.req.ty`json;"application/octet-stream");.j.j param] .bt.print["%endpoint%%QUERY_PATH%"] .kdbai.path,(1#`endpoint)! enlist endpoint;	
- result1:-9!"x"$result0;
- result1 1
- }
-
-
-.kdbai.insert:{[endpoint;name;data]
- g:first 1?0ng;
- result0:.req.post[.bt.print["%endpoint%%INSERT_PATH%"] .kdbai.path,(1#`endpoint)! enlist endpoint;(`$("Content-type";"Accept"))!("application/octet-stream";.req.ty`json);] "c"$-8!(g;name;data);
- `$result0
- }
-
-.kdbai.drop:{[endpoint;name]
- .req.del[;(`$("Content-type";"Accept"))!(.req.ty`json;.req.ty`json)] .bt.print["%endpoint%%DROP_PATH%%name%"] .kdbai.path,(`name`endpoint)! (name;endpoint)
- }
-
-
-.kdbai.search:{[endpoint;name;vectors;n;params]
- params:params,`table`vectors`n!(name;vectors;n);
- result0:.req.post[.bt.print["%endpoint%%SEARCH_PATH%"] .kdbai.path,(1#`endpoint)! enlist endpoint;(`$("Content-type";"Accept"))!(.req.ty`json;"application/octet-stream");] .j.j params ;
- result1:-9!"x"$result0;
- raze result1 1
- }
-
-.kdbai.train:{[endpoint;name;data]
- result0:.req.post[.bt.print["%endpoint%%TRAIN_PATH%"] .kdbai.path,(1#`endpoint)! enlist endpoint;(`$("Content-type";"Accept"))!("application/octet-stream";.req.ty`json);] "c"$-8!(name;data);
- `$result0
- }
-
-.kdbai.hybrid_search:{[endpoint]}        
