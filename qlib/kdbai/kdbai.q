@@ -25,21 +25,24 @@ d)fnc qai.kdbai.summary
  q) .kdbai.summary[]
 
 .kdbai.col0:{[y] `c`t`a!(y 1;y 2;`) }
-.kdbai.col1:{[y] `c`t`a!(y 1;("SE"!" E") "E"^(`sparse`!"SE") y 2 ;`) }
+.kdbai.col1:{[y] if[`tss=y 2;:`c`t`a!(y 1;y[3]`type;`)];`c`t`a!(y 1;("SE"!" E") "E"^`sparse`!"SE" y 2 ;`) }
 .kdbai.col2:{[x] flip{[x]  ((``embedding!(.kdbai.col0;.kdbai.col1)) (``embedding!``embedding) x 0)x } @' x    }
-.kdbai.embedding0:{[x] 1_{[x;y] 
+.kdbai.embedding0:{[x] r:{[x;y]
 	if[`col=y 0;:x];
 	if[`sparse=y 2;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;`b)),y 3 ];
+	if[`tss=y 2;:x];
 	x, enlist (`name`type!(`$"defaultIndexName",string -1+count x;y 2)),y 3
-	} over enlist[{}],x } 
-.kdbai.emdCol0:{ {[x;y] if[`col=y 0;:x];x,y 1    } over enlist[()],x }
+	} over enlist[{}],x;if[{}~r;:()];1_r } 
+.kdbai.emdCol0:{ {[x;y] if[`col=y 0;:x];if[`tss=y 2;:x];x,y 1} over enlist[()],x }
 
+.kdbai.searchCol0:{ {[x;y] if[`col=y 0;:x];if[`tss=y 2;:x,y 1];:x} over enlist[()],x }
 
 .kdbai.cvdb0:{[vdb0;options;arg0]
  a:(`vdb`partn`vdbType!(vdb0;0b;`metaManaged)) ,options;
  a[`schema]:.kdbai.col2 arg0;
- a[`emdCol]:.kdbai.emdCol0 arg0;
- a[`idxParams]:.kdbai.embedding0 arg0;
+ if[not ()~b:.kdbai.emdCol0 arg0;a[`emdCol]:b];
+ if[not ()~b:.kdbai.embedding0 arg0;a[`idxParams]:b];
+ if[not ()~b:.kdbai.searchCol0 arg0;a[`searchCol]:b 0];
  :a
  }
 
@@ -62,7 +65,7 @@ d)fnc qai.kdbai.cvdb
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`qflat;`dims`metric!(1536;`L2)]
+ q) .kdbai.embedding[`embeddings;`qFlat;`dims`metric!(1536;`L2)]
  q) .kdbai.c0
  q)c2:.kdbai.cvdb[`c2]
  q) .kdbai.col[`id;"C"]
@@ -97,12 +100,31 @@ d)fnc qai.kdbai.cvdb
  q) .kdbai.c0
 
 
-.kdbai.getVdbMeta0:{[proc] .remote.qthrow[proc] "getVdbMeta[]"}
-.kdbai.getVdbMeta:{ .kdbai.getVdbMeta0[.kdbai.proc] }
+.kdbai.getVdbMeta0:{[proc;tbl]
+ r:.remote.qthrow[proc] "getVdbMeta[]";
+ if[max(`;::)~\:tbl;:r];
+ if[t:0>type tbl;tbl:enlist tbl]; 
+ r0:r`vdbMetaManaged;
+ s0:0!select from r0 where vdb in tbl;
+ if[t and 1=count s0 ;:s0 0];
+ if[1<=count s0;:s0];
+
+ r0:r`vdbMetaFromRef;
+ s0:0!select from r0 where vdb in tbl;
+ if[t and 1=count s0 ;:s0 0];
+ if[1<=count s0;:s0];
+
+ r 
+ }
+
+.kdbai.getVdbMeta:{[tbl]
+ .kdbai.getVdbMeta0[.kdbai.proc;tbl]
+ }
 
 d)fnc qai.kdbai.getVdbMeta 
  Give a summary of available models
  q) .kdbai.getVdbMeta[]
+ q) .kdbai.getVdbMeta`trade_tss_p
 
 
 .kdbai.getSupportedFilters0:{[proc] .remote.qthrow[proc] "getSupportedFilters[]"}
@@ -145,14 +167,63 @@ d)fnc qai.kdbai.vdbInsert
  q) .kdbai.vdbInsert 
 
 
-.kdbai.getData0:{[proc;arg] .remote.qthrow[proc] (`getData;arg)}
-.kdbai.getData:{[vdb;opt]
+.kdbai.query0:{[proc;arg] .remote.qthrow[proc] (`getData;arg)}
+.kdbai.query:{[vdb;opt]
  if[max(`;::)~\:opt;opt:()!()];
- .kdbai.getData0[.kdbai.proc] ((1#`vdb)!enlist vdb),opt
+ .kdbai.query0[.kdbai.proc] ((1#`vdb)!enlist vdb),opt
  }
 
-d)fnc qai.kdbai.getData 
+d)fnc qai.kdbai.query 
  Give a summary of available models
- q) .kdbai.getData 
+ q) .kdbai.query 
 
 
+(::)proc:.kdbai.proc
+(::)vdb:`trade_tss
+
+.kdbai.vdbSearch1:{[proc;vdb;vectors;k;opt;m]
+ if[max(`;::)~\:opt;opt:()!()];
+ if[0>t:type vectors 0;vectors:enlist vectors];
+ arg:`vdb`k!(vdb;k);
+ arg[`searchCol]:m`searchCol;
+ r:raze{[proc;arg0;arg1] .remote.qthrow[proc] enlist[`vdbSearch;] arg0,(1#`qry)!enlist arg1 }[proc;arg,opt] @'vectors;
+ / if[0>t;:r 0];
+ r
+ }
+
+.kdbai.vdbSearch0:{[proc;vdb;vectors;k;opt]
+ if[max(`;::)~\:opt;opt:()!()];
+ m:.kdbai.getVdbMeta0[proc]vdb;
+ if[not ()~m`searchCol;:.kdbai.vdbSearch1[proc;vdb;vectors;k;opt;m]];
+ if[0>t:type vectors 0;vectors:enlist vectors];
+ idxParam:first m`idxParams;
+ arg:`vdb`k!(vdb;k);
+ arg[`weights]:(1#idxParam`name)!(enlist 1f);
+ r:raze{[proc;arg0;arg1] .remote.qthrow[proc] enlist[`vdbSearch;] arg0,(1#`qry)!enlist arg1 }[proc;arg,opt] @'flip(1#idxParam`name)!(enlist vectors);
+ / if[0>t;:r 0];
+ r
+ }
+
+.kdbai.vdbSearch:{[vdb;vectors;k;opt] .kdbai.vdbSearch0[.kdbai.proc;vdb;vectors;k;opt]}
+
+
+d)fnc qai.kdbai.vdbSearch[] 
+ Give a summary of available models
+ q) .kdbai.vdbSearch [`quickstartkdbai;0 0 0 0 0 0 0 0e;1;`]
+
+
+.kdbai.getTables0:{[proc;vdb0]
+ allMeta:.kdbai.getVdbMeta0[proc;vdb0];
+ a:update type0:`vdbMetaManaged from 0!allMeta`vdbMetaManaged;
+ b:update type0:`vdbMetaFromRef from 0!allMeta`vdbMetaFromRef;
+ allTables:raze `vdb`type0`simSearch`numVec`idxParams`partn`vdbPath`emdCol`schema`partCnt`embedding#/:(a;b); 
+ if[max(`;::)~\:vdb0;:allTables];
+ first select from allTables where vdb=vdb0
+ }
+
+
+.kdbai.getTables:{[vdb].kdbai.getTables0[.kdbai.proc] vdb}
+
+d)fnc qai.kdbai.getTables[] 
+ Give a summary of available tables
+ q) .kdbai.getTables[]
