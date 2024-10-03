@@ -24,79 +24,162 @@ d)fnc qai.kdbai.summary
  Give a summary of available models
  q) .kdbai.summary[]
 
-.kdbai.col0:{[y] `c`t`a!(y 1;y 2;`) }
-.kdbai.col1:{[y] if[`tss=y 2;:`c`t`a!(y 1;y[3]`type;`)];`c`t`a!(y 1;("SE"!" E") "E"^`sparse`!"SE" y 2 ;`) }
-.kdbai.col2:{[x] flip{[x]  ((``embedding!(.kdbai.col0;.kdbai.col1)) (``embedding!``embedding) x 0)x } @' x    }
-.kdbai.embedding0:{[x] r:{[x;y]
-	if[`col=y 0;:x];
-	if[`sparse=y 2;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;`b)),y 3 ];
-	if[`tss=y 2;:x];
-	x, enlist (`name`type!(`$"defaultIndexName",string -1+count x;y 2)),y 3
-	} over enlist[{}],x;if[{}~r;:()];1_r } 
-.kdbai.emdCol0:{ {[x;y] if[`col=y 0;:x];if[`tss=y 2;:x];x,y 1} over enlist[()],x }
-
-.kdbai.searchCol0:{ {[x;y] if[`col=y 0;:x];if[`tss=y 2;:x,y 1];:x} over enlist[()],x }
-
+.kdbai.cvdb:{[vdb0;arg0] .kdbai.cvdb0[vdb0;()!()] .kmp:arg0}
 .kdbai.cvdb0:{[vdb0;options;arg0]
  a:(`vdb`partn`vdbType!(vdb0;0b;`metaManaged)) ,options;
- a[`schema]:.kdbai.col2 arg0;
+ a[`schema]:.kdbai.schema0 arg0;
+ / is_tsc:.kdbai.is_tsc0 arg0;
  if[not ()~b:.kdbai.emdCol0 arg0;a[`emdCol]:b];
- if[not ()~b:.kdbai.embedding0 arg0;a[`idxParams]:b];
- if[not ()~b:.kdbai.searchCol0 arg0;a[`searchCol]:b 0];
+ if[not ()~b:.kdbai.idxParams0 arg0;a[`idxParams]:b];
+ if[not ()~b:.kdbai.searchCol0 arg0;a[`searchCol]:b];
+ if[not ()~b:.kdbai.embedding0 arg0;a[`embedding]:b]; 
  :a
  }
 
-
-
-.kdbai.cvdb:{[vdb0;arg0] .kdbai.cvdb0[vdb0;()!();arg0]}
-.kdbai.col:{[name;type0;arg0] enlist[(`col;name;type0)],arg0 }
-.kdbai.embedding:{[name;type0;arg1;arg0] enlist[(`embedding;name;type0;arg1)],arg0 }
 .kdbai.c0:()
+.kdbai.col:{[name;type0;arg0] enlist[(`col;name;type0)],arg0 }
+.kdbai.col0:{[name;arg0;arg1]
+ r:" E" `vectorIndex in distinct arg0[;0];
+ t:raze {enlist[x 0]!enlist (x 2),(1#`type)!(1#x 1)}@'arg0;
+ enlist[(`col0;name;r;t)],arg1
+ }
+
+.kdbai.col1:{[name;type0;arg0;arg1]
+ t:raze {enlist[x 0]!enlist (x 2),(1#`type)!(1#x 1)}@'arg0;	
+ enlist[(`col1;name;type0;t)],arg1
+ }
+
+
+.kdbai.vectorIndex:{[type0;arg0;arg1] enlist[(`vectorIndex;type0;arg0)],arg1 }
+.kdbai.vectorIndex0:{[type0;arg0] .kdbai.vectorIndex[type0;arg0] .kdbai.c0 }
+
+.kdbai.embedding:{[type0;arg0;arg1] enlist[(`embedding;type0;arg0)],arg1 }
+.kdbai.embedding0:{[type0;arg0] .kdbai.embedding[type0;arg0] .kdbai.c0 }
+
+.kdbai.sparseIndex:{[type0;arg0;arg1] enlist[(`sparseIndex;type0;arg0)],arg1 }
+.kdbai.sparseIndex0:{[type0;arg0] .kdbai.sparseIndex[type0;arg0] .kdbai.c0 }
+
+.kdbai.schema0:{[arg0] `c`t`a!(flip arg0[;1 2]),enlist count[arg0]#`}
+.kdbai.idxParams0:{[x] r:{[x;y]
+	if[`col=y 0;:x];
+	y3:y 3; / if[98h=type y3;y3:y3 0];
+	if[`sparseIndex in key y3;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;`b)),y3`sparseIndex];
+	vectorIndex:y3`vectorIndex;
+	if[`tss=vectorIndex`type;:x];
+	x, enlist (`name`type!(`$"defaultIndexName",string -1+count x;y 2)),vectorIndex
+	} over enlist[{}],x;
+	if[{}~r;:()];
+	1_r 
+ }
+
+.kdbai.searchCol0:{[x] r:{[x;y]
+	if[`col=y 0;:x];
+	y3:y 3; / if[98h=type y3;y3:y3 0];
+	if[not `vectorIndex in key y3;:x];
+	vectorIndex:y3`vectorIndex;
+	if[not `tss=vectorIndex`type;:x];
+	x, y 1
+	} over enlist[{}],x;
+	if[{}~r;:()];
+	first 1_r 
+ }
+
+.kdbai.emdCol0:{[x] r:{[x;y]
+	if[`col=y 0;:x];
+	y3:y 3; / if[98h=type y3;y3:y3 0];
+	if[not `vectorIndex in key y3;:x];
+	vectorIndex:y3`vectorIndex;
+	if[`tss=vectorIndex`type;:x];
+	x, y 1
+	} over enlist[{}],x;
+	if[{}~r;:()];
+	1_r 
+ }
+
+.kdbai.embedding0:{[x] r:{[x;y]
+	if[`col=y 0;:x];
+	y3:y 3; /if[98h=type y3;y3:y3 0];
+	if[not `vectorIndex in key y3;:x];
+	if[not `embedding in key y3;:x];	
+	vectorIndex:y3`vectorIndex;
+	if[`tss=vectorIndex`type;:x];
+	embedding:y3`embedding;
+	x, enlist embedding
+	} over enlist[{}],x;
+	if[{}~r;:()];
+	1_r 
+ }
 
 d)fnc qai.kdbai.cvdb 
  Give a cvdb of available models
- q)c0:.kdbai.cvdb[`d0]
+ q)c7:.kdbai.cvdb[`c7]
+ q) .kdbai.col[`index;"i"]
+ q) .kdbai.col[`sym;"s"]
+ q) .kdbai.col[`time;"p"]
+ q) .kdbai.col0[`price;
+ q) 	.kdbai.vectorIndex[`flat;`dims`metric!(1536;`L2)]
+ q) 	.kdbai.embedding[`tsc;`dims`on_insert_error!(8j;`reject_all)] 
+ q) 	.kdbai.c0
+ q) ]
+ q) .kdbai.c0
+ q)c0:.kdbai.cvdb[`c0]
  q) .kdbai.col[`id;"s"]
  q) .kdbai.col[`tag;"s"]
  q) .kdbai.col[`text;"C"]
- q) .kdbai.embedding[`embeddings;`flat;`dims`metric!(1536;`L2)]
+ q) .kdbai.col0[`embeddings;
+ q) 	.kdbai.vectorIndex0[`flat] `dims`metric!(1536;`L2)
+ q) ]
  q) .kdbai.c0
  q)c1:.kdbai.cvdb[`c1]
- q) .kdbai.col[`id;"C"]
- q) .kdbai.col[`tag;"C"]
- q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`qFlat;`dims`metric!(1536;`L2)]
+ q) .kdbai.col[`id;"s"]
+ q) .kdbai.col[`tag;"s"]
+ q) .kdbai.col[`text;"C"]
+ q) .kdbai.col0[`embeddings;
+ q)	.kdbai.vectorIndex0[`qFlat] `dims`metric!(1536;`L2)
+ q) ]
  q) .kdbai.c0
  q)c2:.kdbai.cvdb[`c2]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`ivf;`trainingVectors`metric`nclusters!(1000j;`CS;10j)]
+ q) .kdbai.col0[`embeddings;
+ q)	.kdbai.vectorIndex0[`ivf] `trainingVectors`metric`nclusters!(1000j;`CS;10j)
+ q) ]
  q) .kdbai.c0
  q)c3:.kdbai.cvdb[`c3]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`ivfpq;`trainingVectors`metric`nclusters`nsplits`nbits!(5000j;`L2;50j;8j;8j)]
+ q) .kdbai.col0[`embeddings;
+ q) 	.kdbai.vectorIndex0[`ivfpq;`trainingVectors`metric`nclusters`nsplits`nbits!(5000j;`L2;50j;8j;8j)]
+ q) ]
  q) .kdbai.c0
  q)c4:.kdbai.cvdb[`c4]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`hnsw;`dims`metric`efConstruction`M!(1536j;`IP;8j;8j)]
+ q) .kdbai.col0[`embeddings;
+ q) 	.kdbai.vectorIndex0[`hnsw;`dims`metric`efConstruction`M!(1536j;`IP;8j;8j)]
+ q) ]
  q) .kdbai.c0
  q)c5:.kdbai.cvdb[`c5]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`embeddings;`sparse;`k`b!1.25 0.75f]
+ q) .kdbai.col0[`embeddings;
+ q) 	.kdbai.vectorIndex0[`sparse;`k`b!1.25 0.75f]
+ q) ]
  q) .kdbai.c0
  q)c6:.kdbai.cvdb[`c6]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
- q) .kdbai.embedding[`denseCol;`flat;`dims`metric!(1536;`L2)] 
- q) .kdbai.embedding[`sparseCol;`sparse;`k`b!1.25 0.75f]
+ q) .kdbai.col0[`denseCol;
+ q) 	.kdbai.vectorIndex0[`flat;`dims`metric!(1536;`L2)] 
+ q) ]
+ q) .kdbai.col0[`sparseCol;
+ q) 	.kdbai.vectorIndex0[`sparse;`k`b!1.25 0.75f]
+ q) ]
  q) .kdbai.c0
 
 
