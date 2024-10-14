@@ -15,7 +15,7 @@ b)wget -P ./data https://raw.githubusercontent.com/KxSystems/kdbai-samples/main/
 
 pd:.pykx.import`pandas
 
-(::)df:pd[`:read_parquet;`$"data/marketTrades.parquet"]`
+(::)df:pd[`:read_parquet;`$"data/marketTrades.parquet"]` / quite nice 
 
 .kdbai.vdbCreate schema:.kdbai.cvdb[`trade_tss]
  .kdbai.col[`index;"j"]
@@ -29,5 +29,3 @@ pd:.pykx.import`pandas
 .kdbai.vdbSearch[`trade_tss;;10;()!()] vec:1000#exec price from df where sym=`BBB
 .kdbai.vdbSearch[`trade_tss;;10;()!()] vec0:(2*-1+1000?2.0) + vec
 .kdbai.vdbSearch[`trade_tss;;-10;()!()] vec0
-
-

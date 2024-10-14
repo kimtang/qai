@@ -63,7 +63,7 @@ d)fnc qai.kdbai.summary
 .kdbai.idxParams0:{[x] r:{[x;y]
 	if[`col=y 0;:x];
 	y3:y 3; / if[98h=type y3;y3:y3 0];
-	if[`sparseIndex in key y3;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;`b)),y3`sparseIndex];
+	if[`sparseIndex in key y3;:x, enlist (`name`sparse!(`$"defaultIndexName",string -1+count x;1b)),y3`sparseIndex];
 	vectorIndex:y3`vectorIndex;
 	if[`tss=vectorIndex`type;:x];
 	x, enlist (`name`type!(`$"defaultIndexName",string -1+count x;y 2)),vectorIndex
@@ -87,6 +87,7 @@ d)fnc qai.kdbai.summary
 .kdbai.emdCol0:{[x] r:{[x;y]
 	if[`col=y 0;:x];
 	y3:y 3; / if[98h=type y3;y3:y3 0];
+	if[`sparseIndex in key y3;:x, y 1];	
 	if[not `vectorIndex in key y3;:x];
 	vectorIndex:y3`vectorIndex;
 	if[`tss=vectorIndex`type;:x];
@@ -112,24 +113,13 @@ d)fnc qai.kdbai.summary
 
 d)fnc qai.kdbai.cvdb 
  Give a cvdb of available models
- q)c7:.kdbai.cvdb[`c7]
- q) .kdbai.col[`index;"i"]
- q) .kdbai.col[`sym;"s"]
- q) .kdbai.col[`time;"p"]
- q) .kdbai.col0[`price;
- q) 	.kdbai.vectorIndex[`flat;`dims`metric!(1536;`L2)]
- q) 	.kdbai.embedding[`tsc;`dims`on_insert_error!(8j;`reject_all)] 
- q) 	.kdbai.c0
- q) ]
- q) .kdbai.c0
  q)c0:.kdbai.cvdb[`c0]
  q) .kdbai.col[`id;"s"]
  q) .kdbai.col[`tag;"s"]
  q) .kdbai.col[`text;"C"]
  q) .kdbai.col0[`embeddings;
  q) 	.kdbai.vectorIndex0[`flat] `dims`metric!(1536;`L2)
- q) ]
- q) .kdbai.c0
+ q) ] .kdbai.c0
  q)c1:.kdbai.cvdb[`c1]
  q) .kdbai.col[`id;"s"]
  q) .kdbai.col[`tag;"s"]
@@ -167,9 +157,8 @@ d)fnc qai.kdbai.cvdb
  q) .kdbai.col[`tag;"C"]
  q) .kdbai.col[`text;"X"]
  q) .kdbai.col0[`embeddings;
- q) 	.kdbai.vectorIndex0[`sparse;`k`b!1.25 0.75f]
- q) ]
- q) .kdbai.c0
+ q) 	.kdbai.sparseIndex0[`sparse;`k`b!1.25 0.75f]
+ q) ] .kdbai.c0
  q)c6:.kdbai.cvdb[`c6]
  q) .kdbai.col[`id;"C"]
  q) .kdbai.col[`tag;"C"]
@@ -178,7 +167,17 @@ d)fnc qai.kdbai.cvdb
  q) 	.kdbai.vectorIndex0[`flat;`dims`metric!(1536;`L2)] 
  q) ]
  q) .kdbai.col0[`sparseCol;
- q) 	.kdbai.vectorIndex0[`sparse;`k`b!1.25 0.75f]
+ q) 	.kdbai.sparseIndex0[`sparse;`k`b!1.25 0.75f]
+ q) ]
+ q) .kdbai.c0
+ q)c7:.kdbai.cvdb[`c7]
+ q) .kdbai.col[`index;"i"]
+ q) .kdbai.col[`sym;"s"]
+ q) .kdbai.col[`time;"p"]
+ q) .kdbai.col0[`price;
+ q) 	.kdbai.vectorIndex[`flat;`dims`metric!(1536;`L2)]
+ q) 	.kdbai.embedding[`tsc;`dims`on_insert_error!(8j;`reject_all)] 
+ q) 	.kdbai.c0
  q) ]
  q) .kdbai.c0
 
@@ -260,10 +259,6 @@ d)fnc qai.kdbai.query
  Give a summary of available models
  q) .kdbai.query 
 
-
-(::)proc:.kdbai.proc
-(::)vdb:`trade_tss
-
 .kdbai.vdbSearch1:{[proc;vdb;vectors;k;opt;m]
  if[max(`;::)~\:opt;opt:()!()];
  if[0>t:type vectors 0;vectors:enlist vectors];
@@ -277,7 +272,7 @@ d)fnc qai.kdbai.query
 .kdbai.vdbSearch0:{[proc;vdb;vectors;k;opt]
  if[max(`;::)~\:opt;opt:()!()];
  m:.kdbai.getVdbMeta0[proc]vdb;
- if[not ()~m`searchCol;:.kdbai.vdbSearch1[proc;vdb;vectors;k;opt;m]];
+ if[not (()~m`searchCol) or `~m`searchCol;:.kdbai.vdbSearch1[proc;vdb;vectors;k;opt;m]];
  if[0>t:type vectors 0;vectors:enlist vectors];
  idxParam:first m`idxParams;
  arg:`vdb`k!(vdb;k);

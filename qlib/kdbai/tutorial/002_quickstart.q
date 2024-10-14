@@ -10,7 +10,6 @@ args:.Q.def[`name`port!("002_quickstart.q";9033);].Q.opt .z.x
 .import.require`remote`ollama`kdbai`repository`docker`pykx
 
 p)from fastembed import TextEmbedding
-
 .textEmbedding.class:.pykx.get`TextEmbedding
 .textEmbedding.ctx:.textEmbedding.class[]
 .textEmbedding.embed:.textEmbedding.ctx[`:embed;>]
@@ -50,34 +49,29 @@ p)from fastembed import TextEmbedding
 
 (::)company_data:update embeddings from company_data
 
-.kdbai.getTables `company_data
+
+(::)allTables:.kdbai.getTables[]
+
+(::)schema:.kdbai.cvdb[`company_data]
+    .kdbai.col[`company_name;"s"]
+    .kdbai.col[`company_description;"C"] 
+    .kdbai.col0[`embeddings;
+        .kdbai.vectorIndex0[`flat] `dims`metric!(384;`CS)]
+    .kdbai.c0
 
 
-/ .kdbai.vdbCreate schema:.kdbai.cvdb[`company_data]
-/  .kdbai.col[`company_name;"s"]
-/  .kdbai.col[`company_description;"C"] 
-/  .kdbai.embedding[`embeddings;`flat;`dims`metric!(384;`CS)]
-/  .kdbai.c0
+if[not `company_data in allTables`vdb;.kdbai.vdbCreate schema];
+.kdbai.query[`company_data]()!()
+
 
 .kdbai.vdbInsert[`company_data]company_data
 
-.kdbai.query[`company_data]()!()
 .kdbai.query[`company_data](1#`filter)!enlist(like; "company_name"; "A*")
 
 (::)query_vector:.pykx.list .textEmbedding.embed `$"A company that helps facilitate meetings"
-
-query = "A company that helps facilitate meetings"
-
-.kdbai.vdbSearch[`company_data;query_vector;1]()!()
-.kdbai.vdbSearch[`company_data;query_vector;3]()!()
-.kdbai.vdbSearch[`company_data;query_vector;3] (1#`filter)!enlist enlist(<>; "company_name"; "Booking.com")
-
-
 (::)query_vector:.pykx.list .textEmbedding.embed `$"A company that helps facilitate meetings"
+(::)query_vector:.pykx.list .textEmbedding.embed `$"A company that meetings"
 
-(::)queries: .pykx.list .textEmbedding.embed `$( "A company with a music-related product";"A social media company")
-
-
-.kdbai.vdbSearch[`company_data;queries;3] ()!()
-.kdbai.vdbSearch[`company_data;queries;3] (1#`agg)!enlist `company_name
-
+.kdbai.vdbSearch[`company_data;query_vector;1;()!()]
+.kdbai.vdbSearch[`company_data;query_vector;5;()!()]
+.kdbai.vdbSearch[`company_data;query_vector;3;(1#`filter)!enlist enlist(<>; "company_name"; "Booking.com")] 
